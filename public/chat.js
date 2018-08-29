@@ -2,7 +2,7 @@ $(function () {
     var socket = io({"connect timeout" : 10000 , "reconnect" : true , "reconnection delay" : 200 , "max reconnection attempts" : 5});
 
     let username = $("strong#username").text().toLowerCase();
-
+    console.log(username);
     socket.emit("new user" , { username : username});
 
     $(".send").click(function(event){
@@ -64,9 +64,30 @@ $(function () {
         appendText("#messages" , "<li>" + data.message + "</li>");
     });
 
+    $("#ready").click(function(event){
+        if($("#ready").hasClass("btn-danger")){
+            $("#ready").removeClass("btn-danger");
+            $("#ready").addClass("btn-success");
+            socket.emit("pressed ready");
+        }
+        else{
+            $("#ready").addClass("btn-danger");
+            $("#ready").removeClass("btn-success");
+            socket.emit("pressed unready");
+        };
+        
+    });
+
+    socket.on("not enough players" , function(data){
+        $("#ready-text").text(data.message);
+    });
+
+    socket.on("start countdown" , function(data){
+        $("#ready-text").text(data.message);     
+    });
 
 
-    $(".btn.btn-secondary.language").click(function(event){
+    $("#language").click(function(event){
         $(".container.rooms").removeClass("hidden");
         $("#modal").addClass("hidden");
 

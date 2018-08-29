@@ -13,6 +13,9 @@ let io = require("socket.io")(http);
 app.use(express.static("public"));
 app.set("view engine" , "ejs");
 
+
+
+let Exercise = require("./models/exercise");
 let User = require("./models/user");
 let Room = require("./models/room");
 let Socket = require("./models/socket");
@@ -90,6 +93,45 @@ app.get("/countries" , function(req , res){
 
 });
 
+app.get("/adding" , middleware.isLoggedIn , function(req , res){
+    res.render("adding");
+});
+
+app.post("/exercise/add" , function(req , res){
+    addExercise(req.body.exercise);
+});
+
+function addExercise(data){
+    let newExercise = {};
+    newExercise.statement = data.statement;
+    newExercise.response = data.response;
+
+    newExercise.variants = [];
+    if(data.variantOne){
+        newExercise.variants.push(data.variantOne);
+    };
+    if(data.variantTwo){
+        newExercise.variants.push(data.variantTwo);
+    };
+    if(data.variantThree){
+        newExercise.variants.push(data.variantThree);
+    };
+    if(data.variantFor){
+        newExercise.variants.push(data.variantFor);
+    };
+    if(data.extra){
+        newExercise.extra = data.extra;
+    };
+    Exercise.create(newExercise,function( error, newExercise){
+        if(error){
+                console.log(error);
+        }
+        else{
+                console.log("Exercise created");
+        }
+    });
+};
+
 function getCountries(callback){
     let arrayCountries = new Array();
     Country.find({} , function(err , foundCountries){
@@ -135,8 +177,64 @@ clearDatabase();
 
 io.on("connection" , function(socket){
     socket.on("new user" , function(data){
-        newSocket(socket , data);
+        newSocket(socket , data , function(createdSocket){
+            console.log("intra in check for duplicated" , data.username);
+            checkForDuplicatedSockets(createdSocket);
+        });
     });
+
+    socket.on("new room" , function(data){
+        findSocketById(socket , function(foundSocket){
+            getNumberOfRooms(function(numberOfRooms){
+                let newRoom = {};
+                newRoom.roomNo = numberOfRooms + 1;
+                newRoom.sockets = [];
+                newRoom.sockets.push(foundSocket);
+                createNewRoom(newRoom);
+                foundSocket.roomNo = newRoom.roomNo;
+                updateSocket(foundSocket);
+                socket.join("room-"+ newRoom.roomNo);
+                io.to(foundSocket.socketId).emit("joined empty room" , { message : "You joined room " + newRoom.roomNo + ", which is empty!"});
+            })
+        });
+
+    });
+
+    socket.on("pressed ready" , function(){
+        findSocketById(socket , function(foundSocket){
+            findRoomByNo(foundSocket.roomNo , function(foundRoom){
+                foundRoom.pressedReady += 1;
+                updateRoom(foundRoom);
+                if(foundRoom.pressedReady === foundRoom.sockets.length){
+                    io.in("room-" + foundRoom.roomNo).emit("start countdown" , {message : "The game is about to start"});
+                }
+                else{
+                    io.in("room-" + foundRoom.roomNo).emit("not enough players", {message : "There are not enough ready players"});
+                }
+            });
+        });
+    });
+
+    
+    socket.on("pressed unready" , function(){
+        findSocketById(socket , function(foundSocket){
+            findRoomByNo(foundSocket.roomNo , function(foundRoom){
+                foundRoom.pressedReady -= 1;
+                updateRoom(foundRoom);
+                io.in("room-" + foundRoom.roomNo).emit("not enough players", {message : "There are not enough ready players"});
+            });
+        });
+    });
+
+    // socket.on("check if able to start" , function(data){
+    //     findSocketById(socket , function(foundSocket){
+    //         findRoomByNo(foundSocket.roomNo , function(foundRoom){
+    //             if(foundRoom.sockets.length > 1 && foundRoom){
+    //                 // io.in("room-" + roomNo).emit('big-announcement', 'the game will start soon');
+    //             };
+    //         });
+    //     });
+    // });
 
     socket.on("join specific room" , function(data){
         findSocketByUsername(data.username , function(foundSocket){
@@ -160,22 +258,6 @@ io.on("connection" , function(socket){
         });  
     }); 
 
-    socket.on("new room" , function(data){
-        findSocketById(socket , function(foundSocket){
-            getNumberOfRooms(function(numberOfRooms){
-                let newRoom = {};
-                newRoom.roomNo = numberOfRooms + 1;
-                newRoom.sockets = [];
-                newRoom.sockets.push(foundSocket);
-                createNewRoom(newRoom);
-                foundSocket.roomNo = newRoom.roomNo;
-                updateSocket(foundSocket);
-                socket.join("room-"+ newRoom.roomNo);
-                io.to(foundSocket.socketId).emit("joined empty room" , { message : "You joined room " + newRoom.roomNo + ", which is empty!"});
-            })
-        });
-
-    });
     socket.on("picked languages by user" , function(data){
         findSocketById(socket ,function(foundSocket){
             foundSocket.nativeLanguage = data.native;
@@ -246,6 +328,24 @@ io.on("connection" , function(socket){
     });    
 });
 
+function checkForDuplicatedSockets(socket){
+    let numberOf = 0;
+    let previousPosition = -1;
+    findSockets(function(foundSockets){
+        for(let i = 0 ; i < foundSockets.length ; i++){
+
+            if(socket.username === foundSockets[i].username){
+                numberOf++;
+                if(numberOf > 1){
+                    console.log("vine socket" , socket.username , "vine foundsockets[i]" , foundSockets[i].username);
+                    removeSocket(foundSockets[previousPosition]);
+                    numberOf--;                    
+                }
+                previousPosition = i;
+            };
+        };
+    });
+};
 
 function clearDatabase(){
     Socket.deleteMany({} , function(err){
@@ -258,7 +358,6 @@ function clearDatabase(){
 
 
 function removeSocketFromRoom(socket , room){
-    console.log("vine de la removeSocketFromRoom" , room.roomNo);
     for(let i = 0 ; i < room.sockets.length ; i++){
         if(room.sockets[i].socketId === socket.id){
             room.sockets.splice(i , 1);
@@ -285,9 +384,20 @@ function removeEmptyRooms(){
 
 };
 
+function findSockets(callback){
+    Socket.find({} , function(err , foundSockets){
+        if(err){
+            console.log(err);
+        }
+        else{
+            console.log("din findSockets" , foundSockets)
+            callback(foundSockets);
+        }
+    });
+};
 
 
-function newSocket(socket , data){
+function newSocket(socket , data , callback){
     let newSocket = {};
     newSocket.socketId = socket.id;
     newSocket.username = data.username;
@@ -298,6 +408,7 @@ function newSocket(socket , data){
         }
         else{
                 console.log("Socket succesfully created");
+                callback(newSocket);
         }
     });
 };
@@ -373,7 +484,6 @@ function findRoomByNo(roomNo , callback){
         }
         else{
             if(foundRooms.length){
-                console.log("vine din findRoomByNo" , foundRooms[0]);
                 callback(foundRooms[0]); 
             };
         };
@@ -381,7 +491,6 @@ function findRoomByNo(roomNo , callback){
 };
 
 function updateSocket(socket){
-    console.log("update socket data" , socket);
     Socket.findByIdAndUpdate(socket._id , socket , function(err , updatedSocket){
             if(err){
                 console.log(err);
@@ -393,24 +502,32 @@ function updateSocket(socket){
 
 };
 
-function updateRoom(data){
-    findRoomByNo(data.roomNo , function(foundRoom){
-        if(data.name){
-            foundRoom.name = data.name;
-        };
-        if(data.sockets.length){
-            foundRoom.sockets.push(data.sockets);
-        };
-    
-        Socket.findByIdAndUpdate(foundRoom._id , foundRoom , function(err , updatedRoom){
-            if(err){
-                console.log(err);
-            }
-            else{
-                console.log("Room succesfully updated");
-            }
-        });
+function updateRoom(room){
+    Room.findByIdAndUpdate(room._id , room , function(err , updatedRoom){
+        if(err){
+            console.log(err);
+        }
+        else{
+            console.log("Room succesfully updated" , updatedRoom);
+        }
     });
+    // findRoomByNo(room.roomNo , function(foundRoom){
+    //     let data = {};
+    //     data.name = room.name;
+    //     data.roomNo = room.roomNo;
+    //     data.sockets = [];
+    //     data.sockets = room.sockets;
+    //     data.pressedReady = room.pressedReady;
+    //     delete foundRoom["_id"];
+    //     Socket.updateOne({ roomNo : room.roomNo} , data , function(err , updatedRoom){
+    //         if(err){
+    //             console.log(err);
+    //         }
+    //         else{
+    //             console.log("Room succesfully updated" , updatedRoom);
+    //         }
+    //     })
+    // });
 
 };
 
@@ -431,9 +548,7 @@ function removeRoom(roomNo){
 };
 
 function removeSocket(socket){
-    findSocketById(socket , function(foundSocket){
-        let foundSocket = foundSocket;
-        Socket.findByIdAndRemove(foundSocket._id , function(err){
+        Socket.findByIdAndRemove(socket._id , function(err){
             if(err){
                 console.log(err);
             }
@@ -441,8 +556,6 @@ function removeSocket(socket){
                 console.log("Socket succesfully removed");
             }
         });
-    });
-
 };
 
 

@@ -1,0 +1,35 @@
+<% include partials/header%>
+<% include partials/navbar%>
+
+<div class="container">
+    <form class="ui form">
+        <div class="field">
+          <label>Statement</label>
+          <input type="text" name="statement" id="statement" placeholder="Statement" required>
+        </div>
+        <div class="field">
+            <label>Variants</label>
+            <input type="text" name="variant" id="variant-one" placeholder="variant" required>
+            <input type="text" name="variant" id="variant-two" placeholder="variant" required>
+            <input type="text" name="variant" id="variant-three" placeholder="variant">
+            <input type="text" name="variant" id="variant-for" placeholder="variant">
+        </div>
+        <div class="field">
+            <label>Response</label>
+            <input type="text" name="response" id="response" placeholder="Response" required>
+        </div>
+
+        <div class="field">
+            <label>Extra</label>
+            <input type="text" name="extra" id="extra" placeholder="Extra" required>
+        </div>
+    
+        <button class="ui button" id="add-exercise">Submit</button>
+    </form>
+</div>
+
+
+
+<% include partials/scripts%>
+<script src="adding.js"></script>
+<% include partials/footer%>
