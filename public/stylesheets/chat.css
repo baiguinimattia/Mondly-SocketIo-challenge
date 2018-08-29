@@ -1,0 +1,43 @@
+ul#messages{
+    border: 1px solid black;
+    height: 500px;
+    background: #fff;
+}
+
+#m {
+    width: 85%;
+    padding: 5px;
+    margin-top: 5px;
+}
+.btn.btn-danger{
+    width: 14%;
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.col-xs-12.col-sm-8{
+    margin: 20px 20px;
+}
+
+.own{
+    float: right;
+}
+
+
+#messages{
+     list-style-type: none; margin: 0; padding: 0; 
+}
+#messages li{ 
+    padding: 5px 10px; 
+}
+#messages li:nth-child(odd){
+     background: #eee; 
+} 
+
+.hidden {
+    display: none;
+}
+
+.btn.btn-danger.full-width{
+    width: 100%;
+}

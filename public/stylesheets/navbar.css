@@ -1,0 +1,12 @@
+.dropdown-menu{
+    top: 154%;
+    left: -90px;
+}
+
+.dropdown-menu.show{
+    border-radius: 5%;
+}
+
+.register{
+    margin: 0 auto;
+}

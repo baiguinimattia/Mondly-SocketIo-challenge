@@ -1,0 +1,83 @@
+<nav class="navbar navbar-dark navbar-expand-md bg-dark justify-content-between sticky-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".dual-nav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="navbar-collapse collapse dual-nav w-50 order-1 order-md-0">
+                <ul class="navbar-nav">
+                    <li class="nav-item ">
+                        <a class="nav-link pl-0" href="/main">HOME</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/leaderboards">LEADERBOARDS</a>
+                    </li>
+                </ul>
+            </div>
+            <a href="/lobby" class="navbar-brand mx-auto d-block text-center order-0 order-md-1 w-25">PLAY</a>
+            <div class="navbar-collapse collapse dual-nav w-50 order-2">
+                <ul class="nav navbar-nav ml-auto">
+                        <%if(!currentUser){%>
+                            <div class="dropdown">
+                                    <button class="btn btn-dark dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                      REGISTER
+                                    </button>
+                                    <div class="dropdown-menu">
+                                            <form action="/register" method="POST" class="px-4 py-4">
+                                                        <div class="form-group">
+                                                            <label>USERNAME</label>
+                                                            <input type="text" class="form-control" name="username" id="username" placeholder="username">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label >PASSWORD</label>
+                                                            <input type="password" class="form-control" name="password" id="password" placeholder="password">
+                                                        </div>
+                                                        <div class="form-group">
+                                                                <div class="ui big fluid search">
+                                                                        <input class="prompt" type="text" name="language" placeholder="Native language" required>
+                                                                        <div class="results"></div>
+                                                                </div>
+                                                        </div>
+                                                        <button type="submit" class="btn btn-primary submit register">REGISTER</button>
+                                            </form>
+                                    </div>
+                            </div>
+                            <div class="dropdown">
+                                    <button class="btn btn-dark dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                      LOGIN
+                                    </button>
+                                    <div class="dropdown-menu">
+                                            <form action="/login" method="POST" class="px-4 py-4">
+                                                        <div class="form-group">
+                                                            <label>USERNAME</label>
+                                                            <input type="text" class="form-control" name="username" id="username1" placeholder="username">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label >PASSWORD</label>
+                                                            <input type="password" class="form-control" name="password" id="password1" placeholder="password">
+                                                        </div>
+                                                        <button type="submit"  class="btn btn-primary submit login">SIGN IN</button>
+                                            </form>
+                                    </div>
+                            </div>
+                            
+                        <%} else {%> 
+                            <a class="item"><i class="fas fa-user"></i><strong id="username"><%=" " + currentUser.username.toUpperCase()%></strong></a>
+                            <li class="nav-item"><a class="nav-link" href="/logout">LOGOUT</a></li>
+                        <%}%>
+                </ul>
+            </div>
+        </div>
+</nav>
+
+<div class="container">
+        <%if(error && error.length > 0){%>
+            <div class="alert alert-danger" role="alert">
+                <p><%=error%></p>
+            </div>
+        <%}%>
+        <%if(success && success.length > 0){%>
+            <div class="alert alert-success" role="alert">
+                <p><%=success%></p>
+            </div>
+        <%}%>
+</div>
