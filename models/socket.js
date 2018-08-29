@@ -2,7 +2,7 @@ var mongoose = require("mongoose")
 
 var SocketSchema  = new mongoose.Schema({
     username : String,
-    roomNo : { type: Number, default: -1 },
+    roomNo : Number,
     socketId : String,
     nativeLanguage : { type: String, default: 'English' },
     learningLanguage : { type: String, default: 'English' },

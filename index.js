@@ -130,6 +130,8 @@ app.get("/lobby" , function(req , res){
 
 let maximumCapacity = 3;
 
+//this function deletes everything from the database on each run
+clearDatabase();
 
 io.on("connection" , function(socket){
     socket.on("new user" , function(data){
@@ -140,7 +142,6 @@ io.on("connection" , function(socket){
         findSocketByUsername(data.username , function(foundSocket){
             let roomNo = data.lobby;
             findRoomByNo(roomNo , function(foundRoom){
-                let foundRoom = foundRoom;
                 foundSocket.hasLeft = false;
                 if(foundRoom.sockets.length > maximumCapacity){
                     io.to(user.socketId).emit('unable to join room', "Please choose another room");
@@ -179,7 +180,6 @@ io.on("connection" , function(socket){
         findSocketById(socket ,function(foundSocket){
             foundSocket.nativeLanguage = data.native;
             foundSocket.learningLanguage = data.learning;
-            console.log("update limbi" , foundSocket);
             updateSocket(foundSocket);
         });
 
@@ -217,18 +217,18 @@ io.on("connection" , function(socket){
     });
     socket.on("pressed Leave" , function(data){
         findSocketById(socket , function(foundSocket){
-            let url = "/lobby";
+            let url = "/";
             console.log(foundSocket.username + "has left room no " + foundSocket.roomNo);
             console.log("redirect to " , url , " after he left the room no " , foundSocket.roomNo);
             io.sockets.in("room-"+foundSocket.roomNo).emit("leftRoom" , { description : foundSocket.username + " has left this lobby!"});
             findRoomByNo(foundSocket.roomNo , function(foundRoom){
-                let foundRoom = foundRoom;
                 removeSocketFromRoom(socket , foundRoom);
                 socket.leave("room-" + foundRoom.roomNo);
                 removeEmptyRooms();
                 io.to(foundSocket.socketId).emit("redirect" , { url : url} );
             })
-
+            foundSocket.roomNo = -1;
+            updateSocket(foundSocket);
         });
     });
 
@@ -238,20 +238,38 @@ io.on("connection" , function(socket){
                 io.sockets.in("room-"+foundSocket.roomNo).emit("disconnected" , { description : foundSocket.username + " has disconnected from this lobby"});
             };
             removeSocket(foundSocket);
-            removeSocketFromRoom(foundSocket.roomNo);
+            findRoomByNo(foundSocket.roomNo , function(foundRoom){
+                removeSocketFromRoom(foundSocket.roomNo , foundRoom);
+            });
             removeEmptyRooms();
         });
     });    
 });
 
 
-
+function clearDatabase(){
+    Socket.deleteMany({} , function(err){
+        if(err) console.log(err);
+    });
+    Room.deleteMany({} , function(err){
+        if(err) console.log(err);
+    })
+};
 
 
 function removeSocketFromRoom(socket , room){
+    console.log("vine de la removeSocketFromRoom" , room.roomNo);
     for(let i = 0 ; i < room.sockets.length ; i++){
         if(room.sockets[i].socketId === socket.id){
             room.sockets.splice(i , 1);
+            Room.findByIdAndUpdate(room._id , room , function(err , updatedRoom){
+                if(err){
+                    console.log(err);
+                }
+                else{
+                    console.log("socket removed from room");
+                };
+            });
         };
     };
 };
@@ -351,6 +369,7 @@ function findRoomByNo(roomNo , callback){
     Room.find({ roomNo : roomNo} , function(err , foundRooms){
         if(err){
             console.log(err);
+            // console.log("vine eroare din findRoomByNo");
         }
         else{
             if(foundRooms.length){
@@ -375,32 +394,40 @@ function updateSocket(socket){
 };
 
 function updateRoom(data){
-    let updatedRoom = findRoomByNo(data.roomNo);
-    if(data.name) updatedRoom.name = data.name;
-    if(data.sockets.length) updatedRoom.sockets.push(data.sockets);
-
-    Socket.findByIdAndUpdate(updatedRoom._id , updatedRoom , function(err , updatedRoom){
-        if(error){
-            console.log(err);
-        }
-        else{
-            console.log("Room succesfully updated");
-        }
-    });
-};
-
-function removeRoom(roomNo){
-    let foundRoom = findRoomByNo(roomNo);
-    if(!foundRoom.sockets.length){
-        Room.findByIdAndRemove(foundRoom._id , function(err){
+    findRoomByNo(data.roomNo , function(foundRoom){
+        if(data.name){
+            foundRoom.name = data.name;
+        };
+        if(data.sockets.length){
+            foundRoom.sockets.push(data.sockets);
+        };
+    
+        Socket.findByIdAndUpdate(foundRoom._id , foundRoom , function(err , updatedRoom){
             if(err){
                 console.log(err);
             }
             else{
-                console.log("Room succesfully removed");
+                console.log("Room succesfully updated");
             }
         });
-    }
+    });
+
+};
+
+function removeRoom(roomNo){
+    findRoomByNo(roomNo , function(foundRoom){
+        if(!foundRoom.sockets.length){
+            Room.findByIdAndRemove(foundRoom._id , function(err){
+                if(err){
+                    console.log(err);
+                }
+                else{
+                    console.log("Room succesfully removed");
+                }
+            });
+        };
+    });
+
 };
 
 function removeSocket(socket){

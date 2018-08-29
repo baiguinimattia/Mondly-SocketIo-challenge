@@ -67,6 +67,9 @@ $(function () {
 
 
     $(".btn.btn-secondary.language").click(function(event){
+        $(".container.rooms").removeClass("hidden");
+        $("#modal").addClass("hidden");
+
         let dropdownNative = $(".dropdown.native");
         let nativeLanguage = dropdownNative[0][Number(dropdownNative[0].value) + 1].text;
         
@@ -74,18 +77,18 @@ $(function () {
         let learnLanguage = dropdownLearn[0][Number(dropdownLearn[0].value) + 1].text;
         console.log("picked languages" , nativeLanguage , learnLanguage);
         socket.emit("picked languages by user" , {username : username , native : nativeLanguage , learning : learnLanguage});
-        
         socket.emit("send lobbies list" , {username : username});
-
+        
+        // $(".btn.btn-primary.modal").addClass("hidden");
         socket.on("sending lobbies" , function(data){
             if(data.username === username){
                     console.log(data);
                     data.lobbies.forEach(function(room){
-                        if(3 - room.connectedUsers.length){
-                            $("#rooms").append("<li>" + "Room " + room.id  + "</li><button data-type-id=" + room.id + " class='btn btn-danger lobby'>Join room</button>");
+                        if(3 - room.sockets.length){
+                            $("#rooms").append("<li>" + "Room " + room.roomNo  + "</li><button data-type-id=" + room.roomNo + " class='btn btn-danger lobby'>Join room</button>");
                         }
                         else{
-                            $("#rooms").append("<li>" + "Room " + room.id  + "</li>");
+                            $("#rooms").append("<li>" + "Room " + room.roomNo  + "</li>");
                         };
                         $(".btn.btn-danger.lobby").click(function(event){
                             let room = $(".btn.btn-danger.lobby").attr("data-type-id");
@@ -97,12 +100,13 @@ $(function () {
                         
                 });
             };
-
-
-
+            $(".container.rooms").removeClass("hidden");
+    
         });
-        
-        $(".container.rooms").removeClass("hidden");
+    });
+
+
+
 
     $(".btn.btn-danger.new-room").click(function(event){
         socket.emit("new room" , {username : username});
@@ -127,6 +131,11 @@ $(function () {
 
     $(".leave").click(function(){
         socket.emit("pressed Leave" , {username : username});
+        $(".container.rooms").removeClass("hidden");
+        $(".btn.btn-danger.new-room").removeClass("hidden");
+        $(".row.chat").addClass("hidden");
+        $("#messages").text("");
+        $("#modal").removeClass("hidden");
     });
 
     socket.on("redirect" , function(data){
@@ -166,7 +175,7 @@ function getCountries(callback){
     
 };
 
-    function getRoomsList(callback){
+function getRoomsList(callback){
         let url = "/rooms";
         $.get(url)
         .done(function(data){
@@ -182,5 +191,4 @@ function getCountries(callback){
                 });
                 callback();
         });
-    };
-})
+};
