@@ -8,8 +8,32 @@
         <button class="btn btn primary" id="submitName">Go into lobby</button>
     </div>
 
+    <div class="ui steps">
+        <div class="active step" id="language-stage">
+            <i class="language icon"></i>
+            <div class="content">
+                <div class="title">Language</div>
+                <div class="description">Choose the languages that you want to play with</div>
+            </div>
+        </div>
+        <div class="disabled step" id="chat-stage">
+            <i class="rocketchat icon"></i>
+            <div class="content">
+                <div class="title">Chat</div>
+                <div class="description">Join a lobby and chat</div>
+            </div>
+        </div>
+        <div class="disabled step" id="game-stage">
+            <i class="gamepad icon"></i>
+            <div class="content">
+                <div class="title">Play</div>
+                <div class="description">Entering playing stage</div>
+            </div>
+        </div>
+    </div>
 
-    <button type="button" class="btn btn-primary" id="modal" data-toggle="modal" data-target="#languagePicking">
+
+    <button type="button" class="btn btn-secondary" id="modal" data-toggle="modal" data-target="#languagePicking">
         Choose your languages
     </button>
     
@@ -71,6 +95,53 @@
 
             </div>
 
+    </div>
+
+
+    <div class="container hidden" id="game-aria">
+            
+        <button type="button" class="btn bg-info" id="instruction" data-toggle="modal" data-target="#instructions">Instructions</button>
+                    
+        <div class="modal fade" id="instructions" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                <h5 class="modal-title" id="exampleModalLabel">Instructions</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                                </div>
+                                <div class="modal-body" id="instruction-text">
+                                        The instructions
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+        </div>
+
+        <div class="container" id="quiz-aria">
+            <h1 id="statement-text">He was ……………………. by the police, but he refused to reveal the secret.</h1>
+        </div>
+        <div class="container" id="response-aria">
+                <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-lg btn-info response" id="response-1">Left</button>
+                        <button type="button" class="btn btn-lg btn-info response" id="response-2">Middle</button>
+                        <button type="button" class="btn btn-lg btn-info response" id="response-3">Right</button>
+                        <button type="button" class="btn btn-lg btn-info response" id="response-4">Right</button>
+                </div>
+
+                <div class="container hidden" id="div-extra">
+                    <h3 id="extra"></h3>
+                </div>
+        </div>
+
+        <button class="btn bg-info" id="continue">Continue</button>
+    </div>
+
+    <div class="container hidden" id="results-aria">
+            <h1 id="h1-results"></h1>
     </div>
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">

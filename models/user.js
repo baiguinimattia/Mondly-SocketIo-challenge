@@ -5,7 +5,8 @@ var UserSchema  = new mongoose.Schema({
     username: String,
     password : String,
     nativeLanguage : { type: String, default: 'English' },
-    learningLanguage: String
+    learningLanguage: String,
+    totalPoints : {type : Number , default: 0}
 });
 
 UserSchema.plugin(passportLocalMongoose);

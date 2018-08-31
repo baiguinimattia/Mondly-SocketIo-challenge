@@ -23,6 +23,17 @@ $("#add-exercise").click(function(event){
     if($("#extra").val() != ""){
         exercise.extra = $("#extra").val();
     };
+    if($("#instruction").val() != ""){
+        exercise.instruction = $("#instruction").val();
+    };
+    if($("#indicator").val() != ""){
+        exercise.indicator = $("#indicator").val();
+    };
+    if($("#type").val() != ""){
+        exercise.type = $("#type").val();
+    };
+
+
     $.post(url , { exercise : exercise} , function( data ){
         
     });

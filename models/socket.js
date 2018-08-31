@@ -7,6 +7,8 @@ var SocketSchema  = new mongoose.Schema({
     nativeLanguage : { type: String, default: 'English' },
     learningLanguage : { type: String, default: 'English' },
     hasLeft : { type: Boolean, default: false },
+    points : {type : Number , default : 0},
+    currentGame : {type : Number , default : 0}
 });
 
 module.exports = mongoose.model("Socket" , SocketSchema);

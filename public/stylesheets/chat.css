@@ -45,4 +45,89 @@ ul#messages{
     margin-top: 30px;
 }
 
+#game{
+    background-color: grey;
+    padding-top: 10px;
+    height: 500px;
+}
+
+.progress-bar{
+    width: 30%;
+}
+
+.progress{
+    height: 2rem;
+}
+
+#game-aria{
+    margin-top: 20px;
+}
+div.ui.steps{
+    width: 80%;
+    margin: 20px 10%;
+}
+
+button#instruction{
+    margin: 0 45%;
+    margin-top: 10px;
+    border: 1px solid black;
+    font-size: 20px;
+    font-weight: 500;
+}
+#quiz-aria{
+    margin-top: 10px;
+}
+h1{
+    text-align: center;
+    font-weight: 500;
+    margin-top: 20px;
+}
+.btn-group{
+    width: 100%;
+}
+
+button.response{
+    width: 25%;
+    margin: 0 15px;
+    border: 1px solid black;
+    color: black;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+#response-aria{
+    padding-top: 50px;
+}
+
+button#continue{
+    float: right;
+    margin-top: 50px;
+    border: 1px solid black;
+    font-size: 25px;
+    font-weight: 500;
+    width: 100%;
+}
+
+#modal{
+    width: 20%;
+    margin: 0 40%;
+}
+
+div#div-extra{
+    color: #fff;
+    padding: 15px;
+    margin: 30px auto;
+    width: 75%;
+    height: 150px;
+    border-radius: 30%;
+}
+h3#extra{
+    font-size: 25px;
+    font-weight: 500;
+    padding-top: 5%;
+    text-align: center;
+}
+
+
+
 

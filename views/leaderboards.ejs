@@ -1,8 +1,14 @@
 <% include partials/header%>
 <% include partials/navbar%>
 
-<div class="jumbotron">
-    <p>LEADERBOARDS</p>
+<div class="container" id="leaderboard">
+    <%leaderboards.forEach(function(user){%>
+        <div class="ui segment">
+                <p>Username: <%=user.username%></p>
+                <p>Points <%=user.totalPoints%></p>
+        </div>
+       
+    <%})%>
 </div>
 
 <% include partials/scripts%>

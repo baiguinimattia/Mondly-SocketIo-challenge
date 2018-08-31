@@ -14,7 +14,7 @@ app.use(express.static("public"));
 app.set("view engine" , "ejs");
 
 
-
+let Leaderboard = require("./models/leaderboard");
 let Exercise = require("./models/exercise");
 let User = require("./models/user");
 let Room = require("./models/room");
@@ -83,7 +83,11 @@ app.get("/test" , function(req , res){
 })
 
 app.get("/leaderboards" , function(req , res){
-    res.render("leaderboards");
+    getLeaderboard(function(leaderboards){
+        console.log(leaderboards);
+        res.render("leaderboards" ,  {leaderboards : leaderboards});
+    });
+ 
 });
 
 app.get("/countries" , function(req , res){
@@ -122,6 +126,15 @@ function addExercise(data){
     if(data.extra){
         newExercise.extra = data.extra;
     };
+    if(data.instruction){
+        newExercise.instruction = data.instruction;
+    };
+    if(data.indicator){
+        newExercise.indicator = data.indicator;
+    };
+    if(data.type){
+        newExercise.type = data.type;
+    };
     Exercise.create(newExercise,function( error, newExercise){
         if(error){
                 console.log(error);
@@ -157,20 +170,12 @@ function isEmpty(obj) {
 
 app.use(userRoutes);
 
-app.get("/chat" , middleware.isLoggedIn, function(req , res){
+app.get("/play" , middleware.isLoggedIn, function(req , res){
     res.render("chat" , {currentUser : req.user});
 });
 
-app.get("/rooms" , function(req , res){
-    res.send({arrayLobbies : lobbies});
-});
-
-app.get("/lobby" , function(req , res){
-    res.render("lobby");
-});
-
-
 let maximumCapacity = 3;
+let numberOfGames = 10;
 
 //this function deletes everything from the database on each run
 clearDatabase();
@@ -200,12 +205,14 @@ io.on("connection" , function(socket){
 
     });
 
-    socket.on("pressed ready" , function(){
+    socket.on("pressed ready" , function(data){
         findSocketById(socket , function(foundSocket){
             findRoomByNo(foundSocket.roomNo , function(foundRoom){
                 foundRoom.pressedReady += 1;
                 updateRoom(foundRoom);
                 if(foundRoom.pressedReady === foundRoom.sockets.length){
+                    foundRoom.state = true;
+                    updateRoom(foundRoom);
                     io.in("room-" + foundRoom.roomNo).emit("start countdown" , {message : "The game is about to start"});
                 }
                 else{
@@ -214,6 +221,54 @@ io.on("connection" , function(socket){
             });
         });
     });
+
+    socket.on("request list of games" , function(data){
+        findSocketById(socket , function(foundSocket){
+            pickGames(numberOfGames , function(foundGames){
+                    findRoomByNo(foundSocket.roomNo , function(foundRoom){
+                            if(!foundRoom.games.length){
+                                foundRoom.games = foundGames;
+                                updateRoom(foundRoom);
+                                io.in("room-" + foundSocket.roomNo).emit("request game");
+                            };
+                    });
+            });
+        });
+    });
+
+    socket.on("send game" , function(data){
+        findSocketById(socket , function(foundSocket){
+            findRoomByNo(foundSocket.roomNo , function(foundRoom){
+                if(foundSocket.currentGame === 9){
+                    io.to(foundSocket.socketId).emit("sending game", {game : foundRoom.games[foundSocket.currentGame] , last : true});
+                }
+                else{
+                    io.to(foundSocket.socketId).emit("sending game", {game : foundRoom.games[foundSocket.currentGame] , last : false});
+                    foundSocket.currentGame += 1;
+                    updateSocket(foundSocket);
+                };
+            });
+        });
+    });
+
+    socket.on("game finished" , function(data){
+        findSocketById(socket , function(foundSocket){
+            io.to(foundSocket.socketId).emit("show ending screen", {points : foundSocket.points});
+            findUserByUsername(foundSocket.username , function(foundUser){
+                    foundUser.totalPoints += foundSocket.points;
+                    updateUser(foundUser);
+            });
+        });
+    });
+
+    socket.on("correct response" , function(data){
+            findSocketById(socket , function(foundSocket){
+                    foundSocket.points += data.points;
+                    updateSocket(foundSocket);
+            });
+    });
+
+
 
     
     socket.on("pressed unready" , function(){
@@ -226,23 +281,14 @@ io.on("connection" , function(socket){
         });
     });
 
-    // socket.on("check if able to start" , function(data){
-    //     findSocketById(socket , function(foundSocket){
-    //         findRoomByNo(foundSocket.roomNo , function(foundRoom){
-    //             if(foundRoom.sockets.length > 1 && foundRoom){
-    //                 // io.in("room-" + roomNo).emit('big-announcement', 'the game will start soon');
-    //             };
-    //         });
-    //     });
-    // });
 
     socket.on("join specific room" , function(data){
         findSocketByUsername(data.username , function(foundSocket){
             let roomNo = data.lobby;
             findRoomByNo(roomNo , function(foundRoom){
                 foundSocket.hasLeft = false;
-                if(foundRoom.sockets.length > maximumCapacity){
-                    io.to(user.socketId).emit('unable to join room', "Please choose another room");
+                if(foundRoom.sockets.length > maximumCapacity || foundRoom.state === true){
+                    io.to(foundSocket.socketId).emit('unable to join room', "Please choose another room . This room is either in a game or is full");
                 }
                 else{
                     foundSocket.roomNo = roomNo;
@@ -304,7 +350,7 @@ io.on("connection" , function(socket){
             console.log("redirect to " , url , " after he left the room no " , foundSocket.roomNo);
             io.sockets.in("room-"+foundSocket.roomNo).emit("leftRoom" , { description : foundSocket.username + " has left this lobby!"});
             findRoomByNo(foundSocket.roomNo , function(foundRoom){
-                removeSocketFromRoom(socket , foundRoom);
+                removeSocketFromRoom(foundSocket , foundRoom);
                 socket.leave("room-" + foundRoom.roomNo);
                 removeEmptyRooms();
                 io.to(foundSocket.socketId).emit("redirect" , { url : url} );
@@ -321,12 +367,132 @@ io.on("connection" , function(socket){
             };
             removeSocket(foundSocket);
             findRoomByNo(foundSocket.roomNo , function(foundRoom){
-                removeSocketFromRoom(foundSocket.roomNo , foundRoom);
+                removeSocketFromRoom(foundSocket , foundRoom);
             });
             removeEmptyRooms();
         });
     });    
 });
+
+function updateUser(user){
+    User.findByIdAndUpdate(user._id , user , function(err, updatedUser){
+        if(err){
+            console.log(err);
+        }
+        else{
+            console.log("user updated");
+        };
+    });
+
+};
+
+function getUsers(callback){
+    User.find({} , function(err, foundUsers){
+        if(err){
+            console.log(err);
+        }
+        else{
+            console.log(foundUsers);
+            callback(foundUsers);
+        };
+    });
+};
+
+function getLeaderboard(callback){
+    let leaderboardUsers = new Array(10);
+    getUsers(function(foundUsers){
+        if(foundUsers.length < 10){
+            var i;
+            for(i = 0 ; i < foundUsers.length ; i ++){
+                leaderboardUsers.push(foundUsers[i]);
+            };
+            if( i === foundUsers.length ){
+                    callback(leaderboardUsers);
+            };
+        }
+        else{
+            
+
+        };
+    });
+};
+
+function order(callback , array){
+    var i , j;
+    for(i = 0 ; i < array.length - 1 ; i++){
+        for(j = i + 1 ; j < array.length ; j++){
+            if(array[i] > array[j]){
+                let aux = array[i];
+                array[i] = array[j];
+                array[j] = aux;
+            };
+        };
+    };
+    if(i === array.length - 1 &&  j === array.length){
+        callback(array);
+    }
+    
+};
+
+function findUserByUsername(username , callback){
+    User.find({username : username} , function(err , foundUser){
+        if(err){
+            console.log(err);
+        }
+        else{
+            callback(foundUser[0]);
+        };
+    });
+}; 
+
+function pickGames(numberOfGames, callback){
+    let games = [];
+    let gameIds = new Array(15).fill(0);
+    
+    let i = 0 ;
+    getExercises(function(foundExercises){
+        while( i < numberOfGames){
+            getRandomInt(15 , function(number){
+                if(gameIds[number] === 0){
+                    games.push(foundExercises[number]);
+                    gameIds[number] = 1;
+                    i++;
+                };
+            });
+        };
+        if(i >= numberOfGames){
+            callback(games);
+        };
+    });
+
+
+};
+
+function getExercises(callback){
+    Exercise.find({} , function(err , foundExercises){
+        if(err){
+            console.log(err);
+        }
+        else{
+            if(foundExercises.length > 0 ){
+                callback(foundExercises);
+            };
+        };
+    });
+};
+
+function checkIfAlreadyPicked(id , array , callback){
+    for(let i = 0 ; i < array.length ; i++){
+        if(array[i] === id){
+            callback(true);
+        };
+    };
+    callback(false);
+};
+
+function getRandomInt(max , callback) {
+    callback(Math.floor(Math.random() * Math.floor(max)));
+}
 
 function checkForDuplicatedSockets(socket){
     let numberOf = 0;
@@ -337,7 +503,6 @@ function checkForDuplicatedSockets(socket){
             if(socket.username === foundSockets[i].username){
                 numberOf++;
                 if(numberOf > 1){
-                    console.log("vine socket" , socket.username , "vine foundsockets[i]" , foundSockets[i].username);
                     removeSocket(foundSockets[previousPosition]);
                     numberOf--;                    
                 }
@@ -346,6 +511,8 @@ function checkForDuplicatedSockets(socket){
         };
     });
 };
+
+
 
 function clearDatabase(){
     Socket.deleteMany({} , function(err){
@@ -359,7 +526,7 @@ function clearDatabase(){
 
 function removeSocketFromRoom(socket , room){
     for(let i = 0 ; i < room.sockets.length ; i++){
-        if(room.sockets[i].socketId === socket.id){
+        if(room.sockets[i].socketId === socket.socketId){
             room.sockets.splice(i , 1);
             Room.findByIdAndUpdate(room._id , room , function(err , updatedRoom){
                 if(err){
@@ -377,7 +544,7 @@ function removeEmptyRooms(){
     findRooms(function(foundRooms){
         foundRooms.forEach(function(room){
             if(!room.sockets.length){
-                removeRoom(room.roomNo);
+                removeRoom(room);
             };
         });
     });
@@ -390,7 +557,7 @@ function findSockets(callback){
             console.log(err);
         }
         else{
-            console.log("din findSockets" , foundSockets)
+            console.log("din findSockets")
             callback(foundSockets);
         }
     });
@@ -401,7 +568,6 @@ function newSocket(socket , data , callback){
     let newSocket = {};
     newSocket.socketId = socket.id;
     newSocket.username = data.username;
-
     Socket.create(newSocket,function( error, newSocket){
         if(error){
                 console.log(error);
@@ -508,33 +674,13 @@ function updateRoom(room){
             console.log(err);
         }
         else{
-            console.log("Room succesfully updated" , updatedRoom);
+            console.log("Room succesfully updated");
         }
     });
-    // findRoomByNo(room.roomNo , function(foundRoom){
-    //     let data = {};
-    //     data.name = room.name;
-    //     data.roomNo = room.roomNo;
-    //     data.sockets = [];
-    //     data.sockets = room.sockets;
-    //     data.pressedReady = room.pressedReady;
-    //     delete foundRoom["_id"];
-    //     Socket.updateOne({ roomNo : room.roomNo} , data , function(err , updatedRoom){
-    //         if(err){
-    //             console.log(err);
-    //         }
-    //         else{
-    //             console.log("Room succesfully updated" , updatedRoom);
-    //         }
-    //     })
-    // });
-
 };
 
-function removeRoom(roomNo){
-    findRoomByNo(roomNo , function(foundRoom){
-        if(!foundRoom.sockets.length){
-            Room.findByIdAndRemove(foundRoom._id , function(err){
+function removeRoom(room){
+            Room.findByIdAndRemove(room._id , function(err){
                 if(err){
                     console.log(err);
                 }
@@ -542,9 +688,6 @@ function removeRoom(roomNo){
                     console.log("Room succesfully removed");
                 }
             });
-        };
-    });
-
 };
 
 function removeSocket(socket){
