@@ -23,7 +23,7 @@ let Country = require("./models/country");
 let middleware = require("./middleware/index");
 let userRoutes = require("./routes/index");
 
-mongoose.connect("mongodb://localhost:27017/challengeMondly" , {useNewUrlParser : true});
+mongoose.connect("mongodb://188.27.49.205/32:27017/challengeMondly" , {useNewUrlParser : true});
 
 app.use(bodyParser.urlencoded({ extended : true}));
 app.use(bodyParser.json());
@@ -159,6 +159,35 @@ function getCountries(callback){
         };
     });
 };
+getCountriesList(function(array){
+    pushCountriesIntoDb(array);
+});
+function getCountriesList(callback){
+    let countries = "Afrikaans|af,Albanian|sq,Amharic|am,Arabic|ar,Armenian|hy,Azeerbaijani|az,Basque|eu,Belarusian|be,Bengali|bn,Bosnian|bs,Bulgarian|bg,Catalan|ca,Cebuano|ceb,Chinese(Simplified)|zh-C,Chinese(Traditional)|zh-T,Corsican|co,Croatian|hr,Czech|cs,Danish|da,Dutch|nl,English|en,Esperanto|eo,Estonian|et,Finnish|fi,French|fr,Frisian|fy,Galician|gl,Georgian|ka,German|de,Greek|el,Gujarati|gu,Haitian|Creole|ht,Hausa|ha,Hawaiian|haw,Hebrew|he,Hindi|hi,Hmong|hmn,Hungarian|hu,Icelandic|is,Igbo|ig,Indonesian|id,Irish|ga,Italian|it,Japanese|ja,Javanese|jw,Kannada|kn,Kazakh|kk,Khmer|km,Korean|ko,Kurdish|ku,Kyrgyz|ky,Lao|lo,Latin|la,Latvian|lv,Lithuanian|lt,Luxembourgish|lb,Macedonian|mk,Malagasy|mg,Malay|ms,Malayalam|ml,Maltese|mt,Maori|mi,Marathi|mr,Mongolian|mn,Myanmar (Burmese)|my,Nepali|ne,Norwegian|no,Nyanja (Chichewa)|ny,Pashto|ps,Persian|fa,Polish|pl,Portuguese (Portugal,Brazil)|pt,Punjabi|pa,Romanian|ro,Russian|ru,Samoan|sm,Scots Gaelic|gd,Serbian|sr,Sesotho|st,Shona|sn,Sindhi|sd,Sinhala (Sinhalese)|si,Slovak|sk,Slovenian|sl,Somali|so,Spanish|es,Sundanese|su,Swahili|sw,Swedish|sv,Tagalog (Filipino)|tl,Tajik|tg,Tamil|ta,Telugu|te,Thai|th,Turkish|tr,Ukrainian|uk,Urdu|ur,Uzbek|uz,Vietnamese|vi,Welsh|cy,Xhosa|xh,Yiddish|yi,Yoruba|yo,Zulu|zu}";
+    let helper = countries.split(",");
+    let arrayCountries = new Array();
+    helper.forEach(function(country){
+        let aux = country.split("|");
+        arrayCountries.push({title : aux[0] , code : aux[1]});
+        
+    })
+    callback(arrayCountries);
+}  
+
+function pushCountriesIntoDb(array){
+    var  i;
+    for(i = 0 ; i < array.length ; i++){
+        Country.create(array[i] , function(err , newCountry){
+            if(err){
+                console.log(err);
+            }
+            else{
+                
+            };
+        });
+    };
+    
+};
 
 function isEmpty(obj) {
     for(var key in obj) {
@@ -183,7 +212,6 @@ clearDatabase();
 io.on("connection" , function(socket){
     socket.on("new user" , function(data){
         newSocket(socket , data , function(createdSocket){
-            console.log("intra in check for duplicated" , data.username);
             checkForDuplicatedSockets(createdSocket);
         });
     });
@@ -240,10 +268,15 @@ io.on("connection" , function(socket){
         findSocketById(socket , function(foundSocket){
             findRoomByNo(foundSocket.roomNo , function(foundRoom){
                 if(foundSocket.currentGame === 9){
-                    io.to(foundSocket.socketId).emit("sending game", {game : foundRoom.games[foundSocket.currentGame] , last : true});
+                    translateGame(foundRoom.games[foundSocket.currentGame] , foundSocket , function(translatedGame){
+                        io.to(foundSocket.socketId).emit("sending game", {game : translatedGame , last : true});
+                    })
+                    
                 }
                 else{
-                    io.to(foundSocket.socketId).emit("sending game", {game : foundRoom.games[foundSocket.currentGame] , last : false});
+                    translateGame(foundRoom.games[foundSocket.currentGame] , foundSocket , function(translatedGame){
+                        io.to(foundSocket.socketId).emit("sending game", {game : translatedGame , last : false});
+                    })
                     foundSocket.currentGame += 1;
                     updateSocket(foundSocket);
                 };
@@ -374,6 +407,44 @@ io.on("connection" , function(socket){
     });    
 });
 
+function translateGame(game , socket, callback){
+    let translatedGame = {};
+    Country.find({ name : socket.learningLanguage} , function(error , foundCountries){
+        if(error){
+            console.log(error);
+        }
+        else{
+            if(foundCountries.length > 0 ){
+                translateText(game.instruction , foundCountries[0].tag  , function(translation){
+                    translatedGame.instruction = translation;
+                    translatedGame.variants = [];
+                    var i;
+                    for(i =0 ; i < game.variants.length ; i++){
+                        translateText(game.variants[i] , foundCountries[0].tag , function(translation){
+                            translatedGame.variants.push(translation);
+                        });
+                    };
+                    if( i === game.variants.length){
+                        translateText(game.response , foundCountries[0].tag , function(translation){
+                            translatedGame.response = translation;
+                            translateText(game.statement , foundCountries[0].tag , function(translation){
+                                translatedGame.statement = translation;
+                                translateText(game.extra , foundCountries[0].tag , function(translation){
+                                    translatedGame.extra = translation;
+                                    console.log(translatedGame);
+                                    callback(translatedGame);
+                                });
+                            });
+
+                        });
+                    };
+                });
+            };
+        };
+    });
+
+};
+
 function updateUser(user){
     User.findByIdAndUpdate(user._id , user , function(err, updatedUser){
         if(err){
@@ -392,7 +463,6 @@ function getUsers(callback){
             console.log(err);
         }
         else{
-            console.log(foundUsers);
             callback(foundUsers);
         };
     });
@@ -407,21 +477,35 @@ function getLeaderboard(callback){
                 leaderboardUsers.push(foundUsers[i]);
             };
             if( i === foundUsers.length ){
+                order(leaderboardUsers , function(array){
+                    leaderboardUsers = array;
                     callback(leaderboardUsers);
+                });
+                
             };
         }
         else{
-            
+            order(foundUsers , function(array){
+                console.log("dupa order" , array);
+                let i;
+                for(i = array.length - 10 ; i < array.length ; i++){
+                    leaderboardUsers.push(array[i]);
+                };
+                if(i === array.length){
+                    callback(leaderboardUsers);
+                };
+            });
+
 
         };
     });
 };
 
-function order(callback , array){
+function order(array ,callback){
     var i , j;
     for(i = 0 ; i < array.length - 1 ; i++){
         for(j = i + 1 ; j < array.length ; j++){
-            if(array[i] > array[j]){
+            if(array[i].totalPoints > array[j].totalPoints){
                 let aux = array[i];
                 array[i] = array[j];
                 array[j] = aux;
@@ -646,7 +730,6 @@ function findRoomByNo(roomNo , callback){
     Room.find({ roomNo : roomNo} , function(err , foundRooms){
         if(err){
             console.log(err);
-            // console.log("vine eroare din findRoomByNo");
         }
         else{
             if(foundRooms.length){

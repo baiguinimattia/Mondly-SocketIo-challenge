@@ -1,6 +1,6 @@
 
 #leaderboard{
-    margin: 0 20%;
+    margin: 0 30%;
     margin-top: 50px;
 }
 .ui.cards{
@@ -10,3 +10,17 @@
 .card{
     display: inline-block;
 }
+
+.ui.segment{
+    margin-bottom: 20px;
+}
+.ui.segment:last-child{
+    margin-bottom: 30px;
+}
+
+p{
+    font-size: 30px;
+    font-weight: 700;
+}
+
+

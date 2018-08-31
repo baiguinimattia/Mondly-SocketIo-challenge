@@ -15,11 +15,16 @@ $(function () {
     });
 
     socket.on("message to self" , function(data){
-        appendText("#messages" , "<li>" + data.from + ": " + data.message + "</li>");
+        appendText("#messages" , "<div class='ui vertical segment'><p>" + data.from + ": " + data.message + "</div>");
     });
 
     socket.on("sending back translation" , function(data){
-        appendText("#messages" , "<li>" + data.from + ": " + data.translation + "</li>");
+        if(username === data.from){
+            appendText("#messages" , "<div class='ui vertical segment'><p class='right'>" + data.from + ": " + data.translation + "</div>");
+        }
+        else{
+            appendText("#messages" , "<div class='ui vertical segment'><p>" + data.from + ": " + data.translation + "</div>");
+        };
     });
 
 
@@ -51,15 +56,15 @@ $(function () {
     });
 
     socket.on("new user joined" , function(data){
-        appendText("#messages" , "<li>" + data + "</li>");
+        appendText("#messages" , "<div class='ui vertical segment'><p>" + data + "</div>");
     });
 
     socket.on("joined empty room" , function(data){
-        appendText("#messages" , "<li>" + data.message + "</li>");
+        appendText("#messages" , "<div class='ui vertical segment'><p>" + data.message + "</div>");
     });
 
     socket.on("joined specific room" , function(data){
-        appendText("#messages" , "<li>" + data.message + "</li>");
+        appendText("#messages" , "<div class='ui vertical segment'><p>" + data.message + "</div>");
     });
 
 
@@ -139,7 +144,7 @@ $(function () {
                     });
                     $("button#continue").click(function(event){
                         if(!pressed){
-                            alert("Please choose an answer");
+                            // alert("Please choose an answer");
                         }
                         else{
                             $(".btn-info.response").each(function(event){
@@ -190,7 +195,7 @@ $(function () {
 
     socket.on("disconnected" , function(data){
         console.log(data);
-        $("#messages").append("<li>" + data.description + "</li>");
+        $("#messages").append("<div class='ui vertical segment'><p>" + data.description + "</div>");
     });
 
     socket.on("send connected users" , function(data){
@@ -225,10 +230,10 @@ $(function () {
                     console.log(data);
                     data.lobbies.forEach(function(room){
                         if(3 - room.sockets.length && room.state === false){
-                            $("#rooms").append("<li>" + "Room " + room.roomNo  + "</li><button data-type-id=" + room.roomNo + " class='btn btn-danger lobby'>Join room</button>");
+                            $("#rooms").append("<li id='lobby'>" + "Room " + room.roomNo  + "</li><button data-type-id=" + room.roomNo + " class='btn btn-danger lobby'>Join room</button>");
                         }
                         else{
-                            $("#rooms").append("<li>" + "Room " + room.roomNo  + "</li>");
+                            $("#rooms").append("<li id='lobby'>" + "Room " + room.roomNo  + "</li>");
                         };
                         $(".btn.btn-danger.lobby").click(function(event){
                             let room = $(".btn.btn-danger.lobby").attr("data-type-id");
@@ -256,7 +261,7 @@ $(function () {
     });
 
     socket.on("leftRoom" , function(data){
-        $("#messages").append("<li>" + data.description + "</li>");
+        $("#messages").append("<div class='ui vertical segment'><p>" + data.description + "</div>");
     });
 
     getCountries(function(data){  
@@ -308,10 +313,10 @@ function getRoomsList(callback){
                 console.log(data);
                 data.arrayLobbies.forEach(function(room){
                     if(3 - room.connectedUsers.length){
-                        $("#rooms").append("<li>" + "Room " + room.id  + "</li><button data-type-id=" + room.id + " class='btn btn-danger lobby'>Join room</button>");
+                        $("#rooms").append("<div class='ui vertical segment'><p>" + "Room " + room.id  + "</div><button data-type-id=" + room.id + " class='btn btn-danger lobby'>Join room</button>");
                     }
                     else{
-                        $("#rooms").append("<li>" + "Room " + room.id  + "</li>");
+                        $("#rooms").append("<div class='ui vertical segment'><p>" + "Room " + room.id  + "</div>");
                     };
 
                 });
